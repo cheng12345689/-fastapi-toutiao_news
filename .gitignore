@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 虚拟环境（本项目 venv 建在 Scripts/ 下）
+Scripts/
+.venv/
+venv/
+
+# 环境变量 / 密钥
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+
+# 前端依赖与构建产物
+node_modules/
+dist/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 本地数据库配置（含口令），不提交
+config/db_conf.py
