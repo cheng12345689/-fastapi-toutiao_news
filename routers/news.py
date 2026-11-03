@@ -47,12 +47,11 @@ async def get_news_detail(
         db: AsyncSession = Depends(get_db)
 ):
     #  获取新闻，阅读后浏览量+1操作，相关新闻
-    detail = await news.get_news(db, news_id)
-    if detail is None:
+    # 先自增：命中说明新闻存在；同时避免拿到自增前的旧值
+    if not await news.increase_news_views(db, news_id):
         raise HTTPException(status_code=404, detail="新闻不存在")
 
-    # 浏览量 +1（数据库侧自增，返回值直接 +1 给前端展示）
-    await news.increase_news_views(db, news_id)
+    detail = await news.get_news(db, news_id)
     related_news = await news.get_related_news(db, news_id, detail.category_id)
 
     return {
@@ -66,7 +65,7 @@ async def get_news_detail(
             "author": detail.author,
             "publishTime": detail.publish_time,
             "categoryId": detail.category_id,
-            "views": detail.views + 1,
+            "views": detail.views,
             "relatedNews": related_news
         }
     }

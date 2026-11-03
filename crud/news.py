@@ -33,10 +33,11 @@ async def get_news(db: AsyncSession, news_id: int):
     return result.scalars().one_or_none()
 
 
-async def increase_news_views(db: AsyncSession, news_id: int):
-    """浏览量 +1，交给数据库自增，避免并发时丢失更新"""
+async def increase_news_views(db: AsyncSession, news_id: int) -> bool:
+    """浏览量 +1（数据库侧自增，避免并发丢更新），返回是否命中该新闻"""
     stmt = update(News).where(News.id == news_id).values(views=News.views + 1)
-    await db.execute(stmt)
+    result = await db.execute(stmt)
+    return result.rowcount > 0
 
 
 async def get_related_news(db: AsyncSession, news_id: int, category_id: int, limit: int = 3):

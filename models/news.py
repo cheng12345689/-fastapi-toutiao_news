@@ -1,23 +1,13 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from sqlalchemy import DateTime, ForeignKey, Index
 from datetime import datetime
 from sqlalchemy import Integer, String, Text
 
-class Base(DeclarativeBase):
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.now,
-        comment="创建时间"
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.now,
-        onupdate=datetime.now,
-        comment="更新时间"
-    )
+from models.base import Base, TimestampMixin
 
-class Category(Base):
+
+class Category(Base, TimestampMixin):
     __tablename__ = "news_category"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, comment="分类id")
     name: Mapped[str] = mapped_column(String(50), unique=True, comment="分类名称")
@@ -26,7 +16,7 @@ class Category(Base):
     def __repr__(self):
         return f"<Category(id={self.id}, name={self.name}, sort_order={self.sort_order})>"
 
-class News(Base):
+class News(Base, TimestampMixin):
     __tablename__ = "news"
     # 创建索引（category_id和发布时间）：提升查询速度
     __table_args__ = (

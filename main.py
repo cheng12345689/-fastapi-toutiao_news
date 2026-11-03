@@ -1,8 +1,13 @@
 from fastapi import FastAPI
-from routers import news
+from routers import news,users
 
 from fastapi.middleware.cors import CORSMiddleware
+from utils.exception_handlers import register_exception_handlers
+
 app = FastAPI()
+
+# 注册全局异常处理器（统一 {code, message, data} 错误响应）
+register_exception_handlers(app)
 
 # 添加CORS中间件
 app.add_middleware(
@@ -14,6 +19,7 @@ app.add_middleware(
 )
 #  挂载路由/注册路由
 app.include_router(news.router)
+app.include_router(users.router)
 
 @app.get("/")
 async def root():
