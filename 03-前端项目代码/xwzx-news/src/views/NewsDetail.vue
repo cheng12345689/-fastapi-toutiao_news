@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNewsStore } from '../store/modules/news'
 import { useHistoryStore } from '../store/modules/history'
@@ -132,10 +132,12 @@ const toggleFavorite = async () => {
   }
 }
 
-// 组件挂载时获取新闻详情并添加到浏览历史
-onMounted(async () => {
-  await newsStore.getNewsDetail(newsId.value)
-  
+// 加载新闻详情并添加到浏览历史
+const loadDetail = async (id) => {
+  // 先清空，避免切换到下一篇时短暂显示上一篇的内容
+  newsStore.newsDetail = {}
+  await newsStore.getNewsDetail(id)
+
   // 添加到浏览历史
   if (newsStore.newsDetail.id) {
     // 先调用API记录浏览历史
@@ -147,14 +149,14 @@ onMounted(async () => {
         console.error('记录浏览历史API失败:', error);
       }
     }
-    
+
     // 无论API是否成功，都添加到本地浏览历史
     // historyStore.addHistory(newsStore.newsDetail);
   }
-  
+
   // 加载收藏数据
   favoriteStore.loadFavorites()
-  
+
   // 检查文章收藏状态
   if (userStore.getLoginStatus && newsStore.newsDetail.id) {
     const result = await favoriteStore.checkFavoriteStatusApi(newsStore.newsDetail.id)
@@ -167,7 +169,11 @@ onMounted(async () => {
       }
     }
   }
-})
+}
+
+// 监听路由 id：从相关推荐跳到另一篇新闻时，组件会被复用，
+// 不会重新执行 onMounted，所以用 watch 在 id 变化时重新加载
+watch(newsId, (id) => loadDetail(id), { immediate: true })
 </script>
 
 <style scoped>
