@@ -1,4 +1,5 @@
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.favorite import Favorite
@@ -16,12 +17,31 @@ async def is_favorite(db: AsyncSession, user_id: int, news_id: int) -> bool:
 
 
 async def add_favorite(db: AsyncSession, user_id: int, news_id: int) -> bool:
-    """添加收藏；已经收藏过则返回 False（接口保持幂等）"""
+    """添加收藏；已经收藏过则返回 False（接口保持幂等）
+
+    并发场景下两个请求可能同时通过 is_favorite 的检查，
+    最终由 user_news_unique 唯一约束兜底，
+    再用 SAVEPOINT 把冲突的回滚范围限制在这一条 INSERT 上。
+    """
+    # 快速路径：顺序重复（比如用户重复点击）直接返回，不制造异常
     if await is_favorite(db, user_id, news_id):
         return False
 
-    db.add(Favorite(user_id=user_id, news_id=news_id))
-    await db.flush()
+    try:
+        # begin_nested() 在当前事务里打一个保存点，而不是新开事务；
+        # 正常退出会 RELEASE SAVEPOINT，异常退出只 ROLLBACK 到保存点，
+        # 外层事务（get_db 里统一 commit）不受影响
+        async with db.begin_nested():
+            db.add(Favorite(user_id=user_id, news_id=news_id))
+            # flush 才真正发送 INSERT；重复收藏时错误在这里抛出
+            await db.flush()
+    except IntegrityError as e:
+        # 只把 MySQL 的“重复键”当作“已收藏”处理，其他完整性错误继续往上抛
+        # e.orig 是底层驱动（pymysql）的原始异常，args[0] 是错误码
+        errno = (getattr(e.orig, "args", None) or (None,))[0]
+        if errno == 1062:  # MySQL: Duplicate entry
+            return False
+        raise
     return True
 
 
